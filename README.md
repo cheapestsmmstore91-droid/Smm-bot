@@ -1,4 +1,4 @@
-# RAYAN STORE — Free Telegram SMM Bot
+# CHEAPEST — Free Telegram SMM Bot
 
 ## What this starter does
 - Telegram bot with menu/buttons
