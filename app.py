@@ -1006,4 +1006,5 @@ tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler)
 tg_app.post_init = post_init
 
 if __name__ == "__main__":
+    threading.Thread(target=run_flask, daemon=True).start()
     tg_app.run_polling(close_loop=False, stop_signals=None)
