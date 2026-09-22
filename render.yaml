@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: rayan-smm-bot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_ID
+        value: "5770813197"
+      - key: SMM_API_URL
+        value: "https://smmstores.in/api/v2"
+      - key: SMM_API_KEY
+        sync: false
