@@ -1,296 +1,187 @@
 import os
-import threading
-import requests
-from flask import Flask
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-    MessageHandler,
-    filters,
-)
+import aiohttp
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import CommandStart
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = os.getenv("ADMIN_ID")
-SMM_API_URL = os.getenv("SMM_API_URL", "https://smmstores.in/api/v2")
+SMM_API_URL = os.getenv("SMM_API_URL")
 SMM_API_KEY = os.getenv("SMM_API_KEY")
 
-app = Flask(__name__)
-
-if not BOT_TOKEN:
-    raise RuntimeError("BOT_TOKEN is missing")
-
-if not SMM_API_KEY:
-    raise RuntimeError("SMM_API_KEY is missing")
-
-users = {}
+bot = Bot(BOT_TOKEN)
+dp = Dispatcher()
 
 
-def api(payload):
-    data = {
-        "key": SMM_API_KEY,
-        **payload
-    }
+# =========================
+# MAIN MENU
+# =========================
 
-    response = requests.post(
-        SMM_API_URL,
-        data=data,
-        timeout=30
-    )
+def main_menu():
+    kb = InlineKeyboardBuilder()
 
-    response.raise_for_status()
-    return response.json()
+    kb.button(text="🛍️ PLACE ORDER", callback_data="place_order")
+    kb.button(text="👤 MY PROFILE", callback_data="profile")
 
+    kb.button(text="💳 ADD FUNDS", callback_data="add_funds")
+    kb.button(text="📍 ORDER STATUS", callback_data="track_order")
 
-def menu():
-    return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "🛍 Services",
-                callback_data="services"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "💰 Balance",
-                callback_data="balance"
-            ),
-            InlineKeyboardButton(
-                "📦 My Orders",
-                callback_data="orders"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "➕ Add Balance",
-                callback_data="addbalance"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "ℹ️ Help",
-                callback_data="help"
-            )
-        ]
-    ])
+    kb.button(text="📦 ALL ORDERS", callback_data="my_orders")
+    kb.button(text="🎧 GET SUPPORT", callback_data="support")
+
+    kb.adjust(2, 2, 1, 1)
+    return kb.as_markup()
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    uid = update.effective_user.id
+# =========================
+# START
+# =========================
 
-    users.setdefault(
-        uid,
-        {
-            "balance": 0.0,
-            "orders": []
-        }
-    )
-
-    await update.message.reply_text(
-        "👋 Welcome to RAYAN STORE\n\n"
-        "Choose an option:",
-        reply_markup=menu()
+@dp.message(CommandStart())
+async def start(message: types.Message):
+    await message.answer(
+        "🛒 <b>CHEAPEST SMM STORE</b>\n\n"
+        "Welcome! Select an option below 👇",
+        reply_markup=main_menu(),
+        parse_mode="HTML"
     )
 
 
-async def menu_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "📋 Main Menu",
-        reply_markup=menu()
+# =========================
+# PLACE ORDER
+# =========================
+
+@dp.callback_query(lambda c: c.data == "place_order")
+async def place_order(callback: types.CallbackQuery):
+
+    kb = InlineKeyboardBuilder()
+    kb.button(text="📸 Instagram", callback_data="cat_instagram")
+    kb.button(text="✈️ Telegram", callback_data="cat_telegram")
+    kb.adjust(2)
+
+    await callback.message.edit_text(
+        "📂 <b>Select Category</b>",
+        reply_markup=kb.as_markup(),
+        parse_mode="HTML"
     )
 
 
-async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+# =========================
+# INSTAGRAM
+# =========================
 
-    uid = query.from_user.id
+@dp.callback_query(lambda c: c.data == "cat_instagram")
+async def instagram(callback: types.CallbackQuery):
 
-    users.setdefault(
-        uid,
-        {
-            "balance": 0.0,
-            "orders": []
-        }
-    )
-
-    if query.data == "services":
-
-        try:
-            result = api({
-                "action": "services"
-            })
-
-            if isinstance(result, list):
-
-                lines = [
-                    "🛍 Available Services\n"
-                ]
-
-                for service in result[:30]:
-
-                    lines.append(
-                        f"ID: {service.get('service')} | "
-                        f"{service.get('name', 'Service')} | "
-                        f"₹{service.get('rate')}/1k"
-                    )
-
-                await query.message.reply_text(
-                    "\n".join(lines)
-                )
-
-            else:
-                await query.message.reply_text(
-                    "❌ Services load nahi ho paye."
-                )
-
-        except Exception:
-            await query.message.reply_text(
-                "❌ SMM API error.\n"
-                "Thodi der baad try karo."
-            )
-
-    elif query.data == "balance":
-
-        balance = users[uid]["balance"]
-
-        await query.message.reply_text(
-            f"💰 Your Balance: ₹{balance:.2f}"
-        )
-
-    elif query.data == "orders":
-
-        orders = users[uid]["orders"]
-
-        if not orders:
-
-            await query.message.reply_text(
-                "📦 Abhi koi order nahi hai."
-            )
-
-        else:
-
-            await query.message.reply_text(
-                "📦 My Orders\n\n"
-                + "\n".join(orders[-10:])
-            )
-
-    elif query.data == "addbalance":
-
-        await query.message.reply_text(
-            "➕ Add Balance\n\n"
-            "Payment ke liye admin se contact karo."
-        )
-
-    elif query.data == "help":
-
-        await query.message.reply_text(
-            "ℹ️ Help\n\n"
-            "🛍 Services - available services dekho\n"
-            "💰 Balance - account balance dekho\n"
-            "📦 My Orders - apne orders dekho\n"
-            "➕ Add Balance - balance add karne ke liye admin se contact karo"
-        )
-
-
-async def text_handler(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-
-    await update.message.reply_text(
-        "📋 Menu open karne ke liye /menu bhejo.",
-        reply_markup=menu()
+    await callback.message.edit_text(
+        "📸 <b>Instagram Services</b>\n\n"
+        "⭐ Instagram Reels + Video Views\n"
+        "⏳ Start - 1min/30min\n"
+        "⚡️ Speed - 5M/Day\n"
+        "💥 Drop - Lifetime Non Drop\n"
+        "🔗 Link - Video & Reel Link\n\n"
+        "Service select karne ke liye API services load hongi.",
+        parse_mode="HTML"
     )
 
 
-async def addbalance(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
+# =========================
+# TELEGRAM
+# =========================
 
-    await update.message.reply_text(
-        "➕ Balance add karne ke liye admin se contact karo."
+@dp.callback_query(lambda c: c.data == "cat_telegram")
+async def telegram(callback: types.CallbackQuery):
+
+    await callback.message.edit_text(
+        "✈️ <b>Telegram Services</b>\n\n"
+        "👥 Members\n"
+        "👁️ Post Views\n"
+        "❤️ Reactions\n\n"
+        "Service select karne ke liye API services load hongi.",
+        parse_mode="HTML"
     )
 
 
-async def status(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
+# =========================
+# PROFILE
+# =========================
 
-    try:
+@dp.callback_query(lambda c: c.data == "profile")
+async def profile(callback: types.CallbackQuery):
 
-        result = api({
-            "action": "balance"
-        })
-
-        await update.message.reply_text(
-            f"API Balance: {result.get('balance', 'N/A')}"
-        )
-
-    except Exception:
-
-        await update.message.reply_text(
-            "❌ API connection failed."
-        )
-
-
-@app.get("/")
-def home():
-
-    return "RAYAN STORE BOT is running", 200
-
-
-def run_flask():
-
-    port = int(
-        os.getenv("PORT", "10000")
-    )
-
-    app.run(
-        host="0.0.0.0",
-        port=port,
-        use_reloader=False
+    await callback.message.edit_text(
+        f"👤 <b>MY PROFILE</b>\n\n"
+        f"🆔 User ID: <code>{callback.from_user.id}</code>\n"
+        f"💰 Balance: ₹0.00",
+        parse_mode="HTML"
     )
 
 
-tg_app = (
-    Application
-    .builder()
-    .token(BOT_TOKEN)
-    .build()
-)
+# =========================
+# ADD FUNDS
+# =========================
 
+@dp.callback_query(lambda c: c.data == "add_funds")
+async def add_funds(callback: types.CallbackQuery):
 
-tg_app.add_handler(
-    CommandHandler("start", start)
-)
-
-tg_app.add_handler(
-    CommandHandler("menu", menu_cmd)
-)
-
-tg_app.add_handler(
-    CommandHandler("addbalance", addbalance)
-)
-
-tg_app.add_handler(
-    CommandHandler("status", status)
-)
-
-tg_app.add_handler(
-    CallbackQueryHandler(buttons)
-)
-
-tg_app.add_handler(
-    MessageHandler(
-        filters.TEXT & ~filters.COMMAND,
-        text_handler
+    await callback.message.edit_text(
+        "💳 <b>ADD FUNDS</b>\n\n"
+        "Amount enter karo.\n"
+        "Example: <code>100</code>\n\n"
+        "Payment gateway connect hone ke baad "
+        "payment automatically verify hoga.",
+        parse_mode="HTML"
     )
-)
+
+
+# =========================
+# TRACK ORDER
+# =========================
+
+@dp.callback_query(lambda c: c.data == "track_order")
+async def track_order(callback: types.CallbackQuery):
+
+    await callback.message.edit_text(
+        "📍 <b>ORDER STATUS</b>\n\n"
+        "Order ID bhejo.\n"
+        "Example: <code>12345678</code>",
+        parse_mode="HTML"
+    )
+
+
+# =========================
+# MY ORDERS
+# =========================
+
+@dp.callback_query(lambda c: c.data == "my_orders")
+async def my_orders(callback: types.CallbackQuery):
+
+    await callback.message.edit_text(
+        "📦 <b>ALL ORDERS</b>\n\n"
+        "Abhi tak koi order nahi mila.",
+        parse_mode="HTML"
+    )
+
+
+# =========================
+# SUPPORT
+# =========================
+
+@dp.callback_query(lambda c: c.data == "support")
+async def support(callback: types.CallbackQuery):
+
+    await callback.message.edit_text(
+        "🎧 <b>GET SUPPORT</b>\n\n"
+        "Support ke liye admin se contact karein.",
+        parse_mode="HTML"
+    )
+
+
+# =========================
+# RUN
+# =========================
+
+async def main():
+    await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
