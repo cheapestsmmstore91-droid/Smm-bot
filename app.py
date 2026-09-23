@@ -49,13 +49,19 @@ def api(payload):
 
 def menu():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🛍 Services", callback_data="services")],
         [
-            InlineKeyboardButton("💰 Balance", callback_data="balance"),
-            InlineKeyboardButton("📦 My Orders", callback_data="orders")
+            InlineKeyboardButton("🛍 SERVICES", callback_data="services"),
         ],
-        [InlineKeyboardButton("➕ Add Balance", callback_data="addbalance")],
-        [InlineKeyboardButton("ℹ️ Help", callback_data="help")]
+        [
+            InlineKeyboardButton("💰 BALANCE", callback_data="balance"),
+            InlineKeyboardButton("📦 MY ORDERS", callback_data="orders"),
+        ],
+        [
+            InlineKeyboardButton("💳 ADD BALANCE", callback_data="addbalance"),
+        ],
+        [
+            InlineKeyboardButton("📞 SUPPORT", callback_data="help"),
+        ],
     ])
 
 
@@ -79,11 +85,12 @@ async def is_joined(user_id, bot):
 
 async def join_required(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
-        "🔒 Join Required\n\n"
-        "Bot use karne ke liye pehle hamare Telegram channel ko join karo.\n\n"
-        "1️⃣ Join Channel par click karo\n"
-        "2️⃣ Channel join karo\n"
-        "3️⃣ ✅ Verify Join dabao"
+        "🔐 CHANNEL VERIFICATION\n\n"
+        "CHEAPEST SMM STORE use karne ke liye pehle\n"
+        "hamara official channel join karo.\n\n"
+        "1️⃣ Join Channel\n"
+        "2️⃣ Join karne ke baad Verify Join\n"
+        "3️⃣ Menu automatically unlock ho jayega"
     )
 
     if update.callback_query:
@@ -108,8 +115,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await update.message.reply_text(
-        "👋 Welcome to RAYAN STORE\n\n"
-        "Choose an option:",
+        "╔════════════════════╗\n"
+        "     🛒 CHEAPEST SMM STORE\n"
+        "╚════════════════════╝\n\n"
+        "⚡ Fast • Reliable • Affordable\n"
+        "📲 Choose an option below:",
         reply_markup=menu()
     )
 
@@ -122,7 +132,8 @@ async def menu_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await update.message.reply_text(
-        "📋 Main Menu",
+        "🏠 CHEAPEST SMM STORE • MAIN MENU\n\n"
+        "Select what you want to do:",
         reply_markup=menu()
     )
 
@@ -138,8 +149,9 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == "verify_join":
         if await is_joined(uid, context.bot):
             await query.message.reply_text(
-                "✅ Join verified!\n\n"
-                "Welcome to RAYAN STORE ❤️",
+                "✅ JOIN VERIFIED\n\n"
+                "Welcome to CHEAPEST SMM STORE ❤️\n"
+                "Your menu is now unlocked.",
                 reply_markup=menu()
             )
         else:
@@ -205,11 +217,12 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "help":
         await query.message.reply_text(
-            "ℹ️ Help\n\n"
-            "🛍 Services - available services dekho\n"
-            "💰 Balance - account balance dekho\n"
-            "📦 My Orders - apne orders dekho\n"
-            "➕ Add Balance - balance add karne ke liye admin se contact karo"
+            "📞 CHEAPEST SMM STORE SUPPORT\n\n"
+            "🛍 Services — available services\n"
+            "💰 Balance — account balance\n"
+            "📦 My Orders — your orders\n"
+            "💳 Add Balance — payment/balance help\n\n"
+            "Need help? Contact the admin."
         )
 
 
@@ -260,7 +273,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @app.get("/")
 def home():
-    return "RAYAN STORE BOT is running", 200
+    return "CHEAPEST SMM STORE BOT is running", 200
 
 
 def run_flask():
